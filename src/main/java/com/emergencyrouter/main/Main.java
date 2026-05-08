@@ -9,14 +9,17 @@ import com.emergencyrouter.model.Report;
 import com.emergencyrouter.model.Route;
 import com.emergencyrouter.model.Vehicle;
 import com.emergencyrouter.service.DispatchService;
+import com.emergencyrouter.service.RoutingService;
+import com.emergencyrouter.strategy.FastestRouteStrategy;
+import com.emergencyrouter.strategy.ShortestDistanceStrategy;
 
 /**
  * Starter console entry point for the Emergency Vehicle Router System.
  *
  * <p>Use this class to run the project from the command line or an IDE. The
- * current version demonstrates the Phase 3 factory and dispatch workflow. Later
- * phases will expand this workflow to use route strategies, graph algorithms,
- * and traffic observer updates.</p>
+ * current version demonstrates the Phase 4 factory, dispatch, and basic routing
+ * strategy workflow. Later phases will expand this workflow to use graph
+ * algorithms and traffic observer updates.</p>
  */
 public final class Main {
 
@@ -49,6 +52,7 @@ public final class Main {
 
         Report report = new Report("R-1", "MEDICAL", incidentLocation, new Date());
         DispatchService dispatchService = new DispatchService(List.of(ambulance, fireTruck, policeCar));
+        RoutingService routingService = new RoutingService(new FastestRouteStrategy());
 
         System.out.println("Emergency report received: " + report.getType());
         System.out.println("Ambulance available: " + ambulance.isAvailable());
@@ -58,16 +62,20 @@ public final class Main {
         // DispatchService owns vehicle selection and calls the correct polymorphic response method.
         dispatchService.assignVehicle(report);
 
-        Route starterRoute = new Route(
-                List.of(ambulance.getCurrentLocation(), report.getLocation()),
-                2.5,
-                6.0
-        );
+        // RoutingService delegates calculation to the active RouteStrategy.
+        Route starterRoute = routingService.calculateRoute(ambulance.getCurrentLocation(), report.getLocation());
 
-        System.out.println("Starter route created.");
+        System.out.println("Fastest route created.");
         System.out.println("Route points: " + starterRoute.getPath().size());
-        System.out.println("Route distance: " + starterRoute.getDistance());
-        System.out.println("Estimated time: " + starterRoute.getTime());
+        System.out.printf("Route distance: %.2f km%n", starterRoute.getDistance());
+        System.out.printf("Estimated time: %.2f minutes%n", starterRoute.getTime());
+
+        routingService.setStrategy(new ShortestDistanceStrategy());
+        Route shortestRoute = routingService.calculateRoute(ambulance.getCurrentLocation(), report.getLocation());
+
+        System.out.println("Shortest-distance route created after strategy switch.");
+        System.out.printf("Shortest route distance: %.2f km%n", shortestRoute.getDistance());
+        System.out.printf("Shortest route estimated time: %.2f minutes%n", shortestRoute.getTime());
         System.out.println("Ambulance status after dispatch: " + ambulance.getStatus());
     }
 }
