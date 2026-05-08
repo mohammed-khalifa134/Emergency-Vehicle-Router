@@ -3,20 +3,20 @@ package com.emergencyrouter.main;
 import java.util.Date;
 import java.util.List;
 
-import com.emergencyrouter.model.Ambulance;
+import com.emergencyrouter.factory.VehicleFactory;
 import com.emergencyrouter.model.Coordinate;
-import com.emergencyrouter.model.FireTruck;
-import com.emergencyrouter.model.PoliceCar;
 import com.emergencyrouter.model.Report;
 import com.emergencyrouter.model.Route;
+import com.emergencyrouter.model.Vehicle;
+import com.emergencyrouter.service.DispatchService;
 
 /**
  * Starter console entry point for the Emergency Vehicle Router System.
  *
  * <p>Use this class to run the project from the command line or an IDE. The
- * current version demonstrates the Phase 2 domain model only. Later phases will
- * expand this workflow to use the factory, dispatch service, route strategies,
- * graph algorithms, and traffic observer updates.</p>
+ * current version demonstrates the Phase 3 factory and dispatch workflow. Later
+ * phases will expand this workflow to use route strategies, graph algorithms,
+ * and traffic observer updates.</p>
  */
 public final class Main {
 
@@ -40,19 +40,23 @@ public final class Main {
         Coordinate policeStationLocation = new Coordinate(32.8920, 13.2000);
         Coordinate incidentLocation = new Coordinate(32.8950, 13.2100);
 
-        Ambulance ambulance = new Ambulance("AMB-1", ambulanceLocation);
-        FireTruck fireTruck = new FireTruck("FIRE-1", fireStationLocation);
-        PoliceCar policeCar = new PoliceCar("POL-1", policeStationLocation);
+        VehicleFactory vehicleFactory = new VehicleFactory();
+
+        // VehicleFactory owns creation logic, so Main does not depend on concrete constructors.
+        Vehicle ambulance = vehicleFactory.createVehicle("AMBULANCE", "AMB-1", ambulanceLocation);
+        Vehicle fireTruck = vehicleFactory.createVehicle("FIRE", "FIRE-1", fireStationLocation);
+        Vehicle policeCar = vehicleFactory.createVehicle("POLICE", "POL-1", policeStationLocation);
 
         Report report = new Report("R-1", "MEDICAL", incidentLocation, new Date());
+        DispatchService dispatchService = new DispatchService(List.of(ambulance, fireTruck, policeCar));
 
         System.out.println("Emergency report received: " + report.getType());
         System.out.println("Ambulance available: " + ambulance.isAvailable());
         System.out.println("Fire truck available: " + fireTruck.isAvailable());
         System.out.println("Police car available: " + policeCar.isAvailable());
  
-        // Current phase uses direct vehicle response; DispatchService will own this in Phase 3.
-        ambulance.respondToReport(report);
+        // DispatchService owns vehicle selection and calls the correct polymorphic response method.
+        dispatchService.assignVehicle(report);
 
         Route starterRoute = new Route(
                 List.of(ambulance.getCurrentLocation(), report.getLocation()),
@@ -64,6 +68,6 @@ public final class Main {
         System.out.println("Route points: " + starterRoute.getPath().size());
         System.out.println("Route distance: " + starterRoute.getDistance());
         System.out.println("Estimated time: " + starterRoute.getTime());
-        System.out.println("Ambulance status after response: " + ambulance.getStatus());
+        System.out.println("Ambulance status after dispatch: " + ambulance.getStatus());
     }
 }
