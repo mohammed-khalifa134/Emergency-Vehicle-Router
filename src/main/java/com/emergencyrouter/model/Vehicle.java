@@ -3,6 +3,8 @@ package com.emergencyrouter.model;
 import com.emergencyrouter.enums.VehicleStatus;
 import com.emergencyrouter.interfaces.Location;
 
+import java.util.Arrays;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -41,6 +43,18 @@ public abstract class Vehicle {
      * @param report emergency report to handle
      */
     public abstract void respondToReport(Report report);
+
+    /**
+     * Checks whether this vehicle can handle the report type.
+     *
+     * <p>Use this method from dispatch logic instead of checking concrete
+     * classes with {@code instanceof}. This keeps dispatch open for new vehicle
+     * types: a new vehicle only needs to define its own capability here.</p>
+     *
+     * @param report emergency report to evaluate
+     * @return true when this vehicle can respond to the report
+     */
+    public abstract boolean canHandle(Report report);
 
     /**
      * Updates the vehicle's current location.
@@ -121,6 +135,33 @@ public abstract class Vehicle {
      */
     protected void markBusy() {
         setStatus(VehicleStatus.BUSY);
+    }
+
+    /**
+     * Checks whether a report type matches any supported aliases.
+     *
+     * <p>Use this helper inside subclasses so each vehicle can declare its own
+     * supported emergency categories without duplicating normalization logic.</p>
+     *
+     * @param report emergency report being evaluated
+     * @param supportedTypes aliases this vehicle supports
+     * @return true when the report type matches one of the aliases
+     */
+    protected boolean reportTypeMatches(Report report, String... supportedTypes) {
+        Objects.requireNonNull(report, "report must not be null");
+        String reportType = normalizeEmergencyType(report.getType());
+
+        return Arrays.stream(supportedTypes)
+                .map(Vehicle::normalizeEmergencyType)
+                .anyMatch(reportType::equals);
+    }
+
+    private static String normalizeEmergencyType(String type) {
+        if (type == null || type.isBlank()) {
+            return "";
+        }
+
+        return type.trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
     }
 
     private static String requireText(String value, String fieldName) {

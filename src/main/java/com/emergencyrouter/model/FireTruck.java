@@ -33,6 +33,20 @@ public final class FireTruck extends Vehicle {
     }
 
     /**
+     * Checks whether this fire truck can handle the report.
+     *
+     * <p>Use this method from {@code DispatchService}. Fire aliases live with
+     * the fire truck instead of inside dispatch selection logic.</p>
+     *
+     * @param report emergency report to evaluate
+     * @return true for fire emergency reports
+     */
+    @Override
+    public boolean canHandle(Report report) {
+        return reportTypeMatches(report, "FIRE", "FIRE_TRUCK", "FIRETRUCK");
+    }
+
+    /**
      * Responds to a fire report and marks the fire truck busy.
      *
      * <p>Use this method after dispatch selects the fire truck.</p>

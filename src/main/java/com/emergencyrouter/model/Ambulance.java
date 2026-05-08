@@ -34,6 +34,20 @@ public final class Ambulance extends Vehicle {
     }
 
     /**
+     * Checks whether this ambulance can handle the report.
+     *
+     * <p>Use this method from {@code DispatchService}. Medical aliases live with
+     * the ambulance instead of inside dispatch selection logic.</p>
+     *
+     * @param report emergency report to evaluate
+     * @return true for medical emergency reports
+     */
+    @Override
+    public boolean canHandle(Report report) {
+        return reportTypeMatches(report, "MEDICAL", "AMBULANCE", "HEALTH");
+    }
+
+    /**
      * Responds to a medical report and marks the ambulance busy.
      *
      * <p>Use this method after dispatch selects the ambulance. It demonstrates

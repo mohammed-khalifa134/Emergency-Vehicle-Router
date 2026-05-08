@@ -34,6 +34,20 @@ public final class PoliceCar extends Vehicle {
     }
 
     /**
+     * Checks whether this police car can handle the report.
+     *
+     * <p>Use this method from {@code DispatchService}. Police aliases live with
+     * the police car instead of inside dispatch selection logic.</p>
+     *
+     * @param report emergency report to evaluate
+     * @return true for police or security reports
+     */
+    @Override
+    public boolean canHandle(Report report) {
+        return reportTypeMatches(report, "POLICE", "POLICE_CAR", "POLICECAR", "SECURITY");
+    }
+
+    /**
      * Responds to a police report and marks the police car busy.
      *
      * <p>Use this method after dispatch selects the police car.</p>
