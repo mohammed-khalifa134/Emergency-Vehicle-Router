@@ -1,12 +1,12 @@
 package com.emergencyrouter.service;
 
 import com.emergencyrouter.enums.VehicleStatus;
-import com.emergencyrouter.model.Ambulance;
 import com.emergencyrouter.model.Coordinate;
-import com.emergencyrouter.model.FireTruck;
-import com.emergencyrouter.model.PoliceCar;
 import com.emergencyrouter.model.Report;
-import com.emergencyrouter.model.Vehicle;
+import com.emergencyrouter.model.vehicles.Ambulance;
+import com.emergencyrouter.model.vehicles.FireTruck;
+import com.emergencyrouter.model.vehicles.PoliceCar;
+import com.emergencyrouter.model.vehicles.Vehicle;
 import junit.framework.TestCase;
 
 import java.util.Date;

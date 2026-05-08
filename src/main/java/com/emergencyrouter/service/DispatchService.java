@@ -1,7 +1,7 @@
 package com.emergencyrouter.service;
 
 import com.emergencyrouter.model.Report;
-import com.emergencyrouter.model.Vehicle;
+import com.emergencyrouter.model.vehicles.Vehicle;
 
 import java.util.List;
 import java.util.Objects;

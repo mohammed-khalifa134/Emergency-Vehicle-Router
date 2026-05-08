@@ -1,6 +1,7 @@
-package com.emergencyrouter.model;
+package com.emergencyrouter.model.vehicles;
 
 import com.emergencyrouter.interfaces.Location;
+import com.emergencyrouter.model.Report;
 
 import java.util.Objects;
 

@@ -7,7 +7,7 @@ import com.emergencyrouter.factory.VehicleFactory;
 import com.emergencyrouter.model.Coordinate;
 import com.emergencyrouter.model.Report;
 import com.emergencyrouter.model.Route;
-import com.emergencyrouter.model.Vehicle;
+import com.emergencyrouter.model.vehicles.Vehicle;
 import com.emergencyrouter.service.DispatchService;
 import com.emergencyrouter.service.RoutingService;
 import com.emergencyrouter.strategy.FastestRouteStrategy;
