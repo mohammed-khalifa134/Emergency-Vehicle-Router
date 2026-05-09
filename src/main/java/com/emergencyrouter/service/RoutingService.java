@@ -1,7 +1,11 @@
 package com.emergencyrouter.service;
 
 import com.emergencyrouter.interfaces.Location;
+import com.emergencyrouter.model.Graph;
 import com.emergencyrouter.model.Route;
+import com.emergencyrouter.model.TrafficData;
+import com.emergencyrouter.observer.Observer;
+import com.emergencyrouter.strategy.HubLabelRouteStrategy;
 import com.emergencyrouter.strategy.RouteStrategy;
 
 import java.util.Objects;
@@ -16,9 +20,12 @@ import java.util.Optional;
  * <p>Dependency Inversion Principle: this service depends on the
  * {@link RouteStrategy} abstraction, not on a specific algorithm.</p>
  */
-public final class RoutingService {
+public final class RoutingService implements Observer<TrafficData> {
     private RouteStrategy strategy;
     private Route currentRoute;
+    private Location lastStart;
+    private Location lastEnd;
+    private final Graph graph;
 
     /**
      * Creates a routing service with an initial strategy.
@@ -29,6 +36,20 @@ public final class RoutingService {
      * @param strategy initial route strategy
      */
     public RoutingService(RouteStrategy strategy) {
+        this(strategy, null);
+    }
+
+    /**
+     * Creates a graph-aware routing service with an initial strategy.
+     *
+     * <p>Use this constructor when the service should react to traffic updates.
+     * The graph is needed so traffic data can update road weights and closures.</p>
+     *
+     * @param strategy initial route strategy
+     * @param graph road graph affected by traffic updates
+     */
+    public RoutingService(RouteStrategy strategy, Graph graph) {
+        this.graph = graph;
         setStrategy(strategy);
     }
 
@@ -58,8 +79,40 @@ public final class RoutingService {
         Objects.requireNonNull(start, "start must not be null");
         Objects.requireNonNull(end, "end must not be null");
 
+        lastStart = start;
+        lastEnd = end;
         currentRoute = strategy.calculateRoute(start, end);
         return currentRoute;
+    }
+
+    /**
+     * Reacts to traffic updates from {@link TrafficService}.
+     *
+     * <p>Use this method through the Observer Pattern. It updates the graph,
+     * refreshes Hub Label data when needed, and recalculates the current route
+     * if this service has already calculated one before.</p>
+     *
+     * @param data latest traffic update
+     */
+    @Override
+    public void update(TrafficData data) {
+        Objects.requireNonNull(data, "data must not be null");
+
+        if (graph == null) {
+            System.out.println("Traffic update received, but no graph is configured for routing.");
+            return;
+        }
+
+        graph.updateTraffic(data.getRoadId(), data.getCongestionLevel(), data.isRoadClosed());
+        refreshHubLabelsIfNeeded();
+
+        if (lastStart == null || lastEnd == null) {
+            return;
+        }
+
+        System.out.println("Recalculating route...");
+        currentRoute = strategy.calculateRoute(lastStart, lastEnd);
+        System.out.println("New route assigned.");
     }
 
     /**
@@ -84,5 +137,18 @@ public final class RoutingService {
      */
     public Optional<Route> getCurrentRoute() {
         return Optional.ofNullable(currentRoute);
+    }
+
+    /**
+     * Refreshes preprocessed Hub Label data when Hub Label routing is active.
+     *
+     * <p>Use this helper after graph traffic changes. Preprocessed labels become
+     * stale when roads close or congestion changes.</p>
+     */
+    private void refreshHubLabelsIfNeeded() {
+        if (strategy instanceof HubLabelRouteStrategy hubLabelRouteStrategy) {
+            HubLabelPreprocessor preprocessor = new HubLabelPreprocessor(graph);
+            hubLabelRouteStrategy.refreshLabels(preprocessor.preprocess());
+        }
     }
 }
