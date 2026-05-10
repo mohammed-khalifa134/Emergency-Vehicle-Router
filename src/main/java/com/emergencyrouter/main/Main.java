@@ -1,6 +1,7 @@
 package com.emergencyrouter.main;
 
 import java.util.Date;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -85,6 +86,7 @@ public final class Main {
         Map<Node, List<HubLabel>> labels = new HubLabelPreprocessor(graph).preprocess();
         double preprocessingMillis = elapsedMillis(preprocessingStart);
         System.out.printf("Hub Label preprocessing finished in %.3f ms%n", preprocessingMillis);
+        printHubLabelRoutes(labels);
 
         HubLabelRouteStrategy hubLabelRouteStrategy = new HubLabelRouteStrategy(graph, labels);
         routingService.setStrategy(hubLabelRouteStrategy);
@@ -202,6 +204,34 @@ public final class Main {
                 dijkstraRoute.route().getTime(),
                 hubLabelRoute.route().getTime()
         );
+    }
+
+    /**
+     * Prints every preprocessed Hub Label route cost.
+     *
+     * <p>Use this method to make the Hub Label preprocessing visible in the
+     * console demo. Each line means: from this source node, the system already
+     * knows the cost to reach each listed hub.</p>
+     *
+     * @param labels preprocessed hub labels grouped by source node
+     */
+    private static void printHubLabelRoutes(Map<Node, List<HubLabel>> labels) {
+        System.out.println();
+        System.out.println("Hub Label precomputed routes:");
+
+        labels.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(Node::getId)))
+                .forEach(entry -> {
+                    String hubs = entry.getValue().stream()
+                            .sorted(Comparator.comparing(label -> label.getHub().getId()))
+                            .map(label -> "%s(%.2f)".formatted(
+                                    label.getHub().getId(),
+                                    label.getDistance()
+                            ))
+                            .collect(Collectors.joining(", "));
+
+                    System.out.println(entry.getKey().getId() + " -> " + hubs);
+                });
     }
 
     /**
