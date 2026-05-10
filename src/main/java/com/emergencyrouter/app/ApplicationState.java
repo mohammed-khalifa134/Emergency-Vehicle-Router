@@ -188,6 +188,14 @@ public final class ApplicationState {
     }
 
     /**
+     * Clears the selected vehicle when a new report starts.
+     */
+    public void clearSelectedVehicle() {
+        selectedVehicle = null;
+        notifyStateChanged();
+    }
+
+    /**
      * Gets the most recent calculated route.
      *
      * @return optional current route

@@ -54,6 +54,9 @@ import com.emergencyrouter.model.vehicles.Vehicle;
  *     controller, state listener, and initial refresh.</li>
  *     <li>{@code createTabs()} builds Dashboard, Reports, Vehicles, Routing,
  *     Traffic, Map, and Logs sections.</li>
+ *     <li>{@code runFullWorkflowFromQuickPanel()} and
+ *     {@code runFullWorkflowFromReportsPanel()} provide one-click emergency
+ *     workflows for easier UX.</li>
  *     <li>{@code createReportsPanel()}, {@code createVehiclesPanel()},
  *     {@code createRoutingPanel()}, {@code createTrafficPanel()}, and
  *     {@code createMapEditorPanel()} build the major user workflows.</li>
@@ -71,10 +74,15 @@ public final class EmergencyRouterPanel extends JPanel {
     private final JLabel selectedVehicleLabel = new JLabel("No vehicle");
     private final JLabel routeStatusLabel = new JLabel("No route");
     private final JLabel strategyStatusLabel = new JLabel("Dijkstra");
+    private final JLabel nextStepLabel = new JLabel("Create a report or run the quick workflow");
+    private final JTextField quickReportIdField = new JTextField("R-QUICK-1", 12);
+    private final JComboBox<String> quickReportTypeCombo = new JComboBox<>(new String[] {"MEDICAL", "FIRE", "POLICE"});
+    private final JComboBox<String> quickIncidentNodeCombo = new JComboBox<>();
     private final JTextField reportIdField = new JTextField("R-UI-1", 12);
     private final JComboBox<String> reportTypeCombo = new JComboBox<>(new String[] {"MEDICAL", "FIRE", "POLICE"});
     private final JComboBox<String> incidentNodeCombo = new JComboBox<>();
     private final JComboBox<RoutingAlgorithm> algorithmCombo = new JComboBox<>(RoutingAlgorithm.values());
+    private final JTextArea dashboardRouteSummaryArea = readOnlyTextArea(5, 36);
     private final JTextArea reportRouteSummaryArea = readOnlyTextArea(5, 36);
     private final JTextArea routingSummaryArea = readOnlyTextArea(5, 36);
     private final JTextArea logArea = readOnlyTextArea(16, 60);
@@ -100,6 +108,7 @@ public final class EmergencyRouterPanel extends JPanel {
     private final JComboBox<String> trafficRoadCombo = new JComboBox<>();
     private final JTextField trafficCongestionField = new JTextField(8);
     private final JCheckBox trafficClosedCheckBox = new JCheckBox("Road closed");
+    private final RoadMapPanel dashboardMapPanel = new RoadMapPanel();
     private final RoadMapPanel mapPanel = new RoadMapPanel();
 
     /**
@@ -129,6 +138,7 @@ public final class EmergencyRouterPanel extends JPanel {
         addRow(panel, 1, "Vehicle:", selectedVehicleLabel);
         addRow(panel, 2, "Route:", routeStatusLabel);
         addRow(panel, 3, "Strategy:", strategyStatusLabel);
+        addRow(panel, 4, "Next:", nextStepLabel);
         return panel;
     }
 
@@ -146,16 +156,51 @@ public final class EmergencyRouterPanel extends JPanel {
 
     private JPanel createDashboardPanel() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
-        JTextArea helpText = readOnlyTextArea(12, 60);
+        JPanel workflowPanel = new JPanel(new GridBagLayout());
+        workflowPanel.setBorder(BorderFactory.createTitledBorder("Quick Emergency Workflow"));
+
+        addRow(workflowPanel, 0, "Report ID:", quickReportIdField);
+        addRow(workflowPanel, 1, "Emergency type:", quickReportTypeCombo);
+        addRow(workflowPanel, 2, "Incident node:", quickIncidentNodeCombo);
+
+        JButton runWorkflowButton = new JButton("Run Full Workflow");
+        JButton closeDemoRoadButton = new JButton("Close Station->Downtown");
+        JButton reopenDemoRoadButton = new JButton("Reopen Station->Downtown");
+        JButton resetFleetButton = new JButton("Reset Fleet");
+
+        runWorkflowButton.addActionListener(event -> runAction(this::runFullWorkflowFromQuickPanel));
+        closeDemoRoadButton.addActionListener(event -> runAction(() ->
+                applyRoadUpdate("Station->Downtown", 0.0, true)));
+        reopenDemoRoadButton.addActionListener(event -> runAction(() ->
+                applyRoadUpdate("Station->Downtown", 0.0, false)));
+        resetFleetButton.addActionListener(event -> runAction(controller::resetFleetAvailability));
+
+        JPanel quickButtons = new JPanel();
+        quickButtons.add(runWorkflowButton);
+        quickButtons.add(closeDemoRoadButton);
+        quickButtons.add(reopenDemoRoadButton);
+        quickButtons.add(resetFleetButton);
+        addWideRow(workflowPanel, 3, quickButtons);
+
+        JTextArea helpText = readOnlyTextArea(7, 36);
         helpText.setText("""
-                Dashboard workflow:
-                1. Create a report from the Reports tab.
-                2. Dispatch a suitable vehicle.
-                3. Calculate or switch routing algorithms from the Routing tab.
-                4. Apply traffic updates from the Traffic tab.
-                5. Watch the route and map refresh automatically.
+                Fast path:
+                1. Check the emergency type and incident node.
+                2. Press Run Full Workflow.
+                3. Watch the route appear on the map.
+                4. Close a road to trigger automatic rerouting.
+
+                Detailed controls are still available in the tabs.
                 """);
-        panel.add(helpText, BorderLayout.CENTER);
+
+        JPanel leftPanel = new JPanel(new BorderLayout(8, 8));
+        leftPanel.add(workflowPanel, BorderLayout.NORTH);
+        leftPanel.add(new JScrollPane(helpText), BorderLayout.CENTER);
+        leftPanel.add(new JScrollPane(dashboardRouteSummaryArea), BorderLayout.SOUTH);
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, dashboardMapPanel);
+        splitPane.setResizeWeight(0.36);
+        panel.add(splitPane, BorderLayout.CENTER);
         return panel;
     }
 
@@ -167,9 +212,10 @@ public final class EmergencyRouterPanel extends JPanel {
         addRow(form, 1, "Emergency type:", reportTypeCombo);
         addRow(form, 2, "Incident node:", incidentNodeCombo);
 
-        JButton createReportButton = new JButton("Create Report");
-        JButton dispatchButton = new JButton("Dispatch Vehicle");
-        JButton calculateButton = new JButton("Calculate Route");
+        JButton createReportButton = new JButton("1. Create Report");
+        JButton dispatchButton = new JButton("2. Dispatch Vehicle");
+        JButton calculateButton = new JButton("3. Calculate Route");
+        JButton runFullWorkflowButton = new JButton("Run Full Workflow");
 
         createReportButton.addActionListener(event -> runAction(() ->
                 controller.createReport(
@@ -179,8 +225,10 @@ public final class EmergencyRouterPanel extends JPanel {
                 )));
         dispatchButton.addActionListener(event -> runAction(controller::dispatchCurrentReport));
         calculateButton.addActionListener(event -> runAction(controller::calculateCurrentRoute));
+        runFullWorkflowButton.addActionListener(event -> runAction(this::runFullWorkflowFromReportsPanel));
 
         JPanel buttons = new JPanel();
+        buttons.add(runFullWorkflowButton);
         buttons.add(createReportButton);
         buttons.add(dispatchButton);
         buttons.add(calculateButton);
@@ -202,6 +250,7 @@ public final class EmergencyRouterPanel extends JPanel {
 
         JButton addVehicleButton = new JButton("Add Vehicle");
         JButton updateVehicleButton = new JButton("Update Selected Vehicle");
+        JButton resetFleetButton = new JButton("Reset Fleet Availability");
 
         addVehicleButton.addActionListener(event -> runAction(() -> {
             Vehicle vehicle = controller.addVehicle(
@@ -216,10 +265,12 @@ public final class EmergencyRouterPanel extends JPanel {
             controller.updateVehicleStatus(vehicleId, selectedStatus());
             controller.updateVehicleLocation(vehicleId, selectedString(vehicleLocationCombo));
         }));
+        resetFleetButton.addActionListener(event -> runAction(controller::resetFleetAvailability));
 
         JPanel buttons = new JPanel();
         buttons.add(addVehicleButton);
         buttons.add(updateVehicleButton);
+        buttons.add(resetFleetButton);
 
         JPanel editor = new JPanel(new BorderLayout());
         editor.add(form, BorderLayout.CENTER);
@@ -261,13 +312,13 @@ public final class EmergencyRouterPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         JPanel form = new JPanel();
         JButton applyTrafficButton = new JButton("Apply Traffic Update");
+        JButton closeRoadButton = new JButton("Close Selected Road");
+        JButton openRoadButton = new JButton("Open Selected Road");
 
         applyTrafficButton.addActionListener(event -> runAction(() ->
-                controller.applyTrafficUpdate(
-                        selectedString(trafficRoadCombo),
-                        parseDouble(trafficCongestionField, "traffic congestion"),
-                        trafficClosedCheckBox.isSelected()
-                )));
+                applySelectedTrafficUpdate(trafficClosedCheckBox.isSelected())));
+        closeRoadButton.addActionListener(event -> runAction(() -> applySelectedTrafficUpdate(true)));
+        openRoadButton.addActionListener(event -> runAction(() -> applySelectedTrafficUpdate(false)));
 
         form.add(new JLabel("Road:"));
         form.add(trafficRoadCombo);
@@ -275,6 +326,8 @@ public final class EmergencyRouterPanel extends JPanel {
         form.add(trafficCongestionField);
         form.add(trafficClosedCheckBox);
         form.add(applyTrafficButton);
+        form.add(closeRoadButton);
+        form.add(openRoadButton);
 
         panel.add(form, BorderLayout.NORTH);
         panel.add(new JScrollPane(roadsTable), BorderLayout.CENTER);
@@ -397,6 +450,8 @@ public final class EmergencyRouterPanel extends JPanel {
         refreshComboBoxes();
         refreshTables();
         refreshSummary();
+        dashboardMapPanel.setGraph(state.getGraph());
+        dashboardMapPanel.setRoute(state.getCurrentRoute().orElse(null));
         mapPanel.setGraph(state.getGraph());
         mapPanel.setRoute(state.getCurrentRoute().orElse(null));
         logArea.setText(String.join(System.lineSeparator(), state.getLogs()));
@@ -406,13 +461,14 @@ public final class EmergencyRouterPanel extends JPanel {
         List<String> nodeIds = sortedNodes().stream().map(Node::getId).toList();
         List<String> roadIds = sortedEdges().stream().map(Edge::getRoadId).toList();
 
-        replaceItems(incidentNodeCombo, nodeIds);
-        replaceItems(vehicleLocationCombo, nodeIds);
-        replaceItems(removeNodeCombo, nodeIds);
-        replaceItems(sourceNodeCombo, nodeIds);
-        replaceItems(destinationNodeCombo, nodeIds);
-        replaceItems(roadEditCombo, roadIds);
-        replaceItems(trafficRoadCombo, roadIds);
+        replaceItems(quickIncidentNodeCombo, nodeIds, "Incident");
+        replaceItems(incidentNodeCombo, nodeIds, "Incident");
+        replaceItems(vehicleLocationCombo, nodeIds, "Station");
+        replaceItems(removeNodeCombo, nodeIds, null);
+        replaceItems(sourceNodeCombo, nodeIds, "Station");
+        replaceItems(destinationNodeCombo, nodeIds, "Incident");
+        replaceItems(roadEditCombo, roadIds, "Station->Downtown");
+        replaceItems(trafficRoadCombo, roadIds, "Station->Downtown");
     }
 
     private void refreshTables() {
@@ -472,10 +528,12 @@ public final class EmergencyRouterPanel extends JPanel {
         routeStatusLabel.setText(state.getCurrentRoute()
                 .map(route -> String.format("%.2f distance / %.2f cost", route.getDistance(), route.getTime()))
                 .orElse("No route"));
+        nextStepLabel.setText(nextStepText());
 
         String summary = state.getCurrentRoute()
                 .map(this::formatRoute)
                 .orElse("No route calculated yet.");
+        dashboardRouteSummaryArea.setText(summary);
         reportRouteSummaryArea.setText(summary);
         routingSummaryArea.setText(summary);
     }
@@ -520,6 +578,54 @@ public final class EmergencyRouterPanel extends JPanel {
                     JOptionPane.ERROR_MESSAGE
             );
         }
+    }
+
+    private void runFullWorkflowFromQuickPanel() {
+        reportIdField.setText(quickReportIdField.getText());
+        reportTypeCombo.setSelectedItem(selectedString(quickReportTypeCombo));
+        incidentNodeCombo.setSelectedItem(selectedString(quickIncidentNodeCombo));
+        controller.runEmergencyWorkflow(
+                quickReportIdField.getText(),
+                selectedString(quickReportTypeCombo),
+                selectedString(quickIncidentNodeCombo)
+        );
+    }
+
+    private void runFullWorkflowFromReportsPanel() {
+        quickReportIdField.setText(reportIdField.getText());
+        quickReportTypeCombo.setSelectedItem(selectedString(reportTypeCombo));
+        quickIncidentNodeCombo.setSelectedItem(selectedString(incidentNodeCombo));
+        controller.runEmergencyWorkflow(
+                reportIdField.getText(),
+                selectedString(reportTypeCombo),
+                selectedString(incidentNodeCombo)
+        );
+    }
+
+    private void applySelectedTrafficUpdate(boolean closed) {
+        applyRoadUpdate(
+                selectedString(trafficRoadCombo),
+                parseDouble(trafficCongestionField, "traffic congestion"),
+                closed
+        );
+        trafficClosedCheckBox.setSelected(closed);
+    }
+
+    private void applyRoadUpdate(String roadId, double congestionLevel, boolean closed) {
+        controller.applyTrafficUpdate(roadId, congestionLevel, closed);
+    }
+
+    private String nextStepText() {
+        if (state.getCurrentReport().isEmpty()) {
+            return "Create a report or press Run Full Workflow.";
+        }
+        if (state.getSelectedVehicle().isEmpty()) {
+            return "Dispatch a suitable vehicle.";
+        }
+        if (state.getCurrentRoute().isEmpty()) {
+            return "Calculate the route.";
+        }
+        return "Route ready. Try closing a road or switching algorithms.";
     }
 
     private List<Node> sortedNodes() {
@@ -609,13 +715,15 @@ public final class EmergencyRouterPanel extends JPanel {
         return (DefaultTableModel) table.getModel();
     }
 
-    private static void replaceItems(JComboBox<String> comboBox, List<String> values) {
+    private static void replaceItems(JComboBox<String> comboBox, List<String> values, String preferredValue) {
         Object selected = comboBox.getSelectedItem();
         comboBox.removeAllItems();
         values.forEach(comboBox::addItem);
 
         if (selected != null && values.contains(selected.toString())) {
             comboBox.setSelectedItem(selected);
+        } else if (preferredValue != null && values.contains(preferredValue)) {
+            comboBox.setSelectedItem(preferredValue);
         } else if (!values.isEmpty()) {
             comboBox.setSelectedIndex(0);
         }

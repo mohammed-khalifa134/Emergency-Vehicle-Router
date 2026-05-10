@@ -42,6 +42,8 @@ import com.emergencyrouter.strategy.ShortestDistanceStrategy;
  * <ul>
  *     <li>{@link #createReport(String, String, String)} creates the active
  *     emergency report.</li>
+ *     <li>{@link #runEmergencyWorkflow(String, String, String)} performs the
+ *     common create-dispatch-route workflow in one action.</li>
  *     <li>{@link #dispatchCurrentReport()} selects and marks a suitable vehicle
  *     as busy.</li>
  *     <li>{@link #calculateCurrentRoute()} calculates and stores the active
@@ -57,6 +59,8 @@ import com.emergencyrouter.strategy.ShortestDistanceStrategy;
  *     <li>{@link #addVehicle(String, String, String)},
  *     {@link #updateVehicleStatus(String, VehicleStatus)}, and
  *     {@link #updateVehicleLocation(String, String)} support fleet editing.</li>
+ *     <li>{@link #resetFleetAvailability()} makes repeated demos easy by
+ *     returning every vehicle to AVAILABLE.</li>
  * </ul>
  */
 public final class EmergencyRouterController {
@@ -110,8 +114,32 @@ public final class EmergencyRouterController {
         );
 
         state.setCurrentReport(report);
+        state.clearSelectedVehicle();
+        state.clearCurrentRoute();
         state.addLog("Emergency report " + report.getId() + " created for " + report.getType() + ".");
         return report;
+    }
+
+    /**
+     * Runs the most common emergency workflow in one controller action.
+     *
+     * <p>Use this from the Swing dashboard when the user wants a fast path:
+     * create report, dispatch a vehicle, and calculate the route immediately.</p>
+     *
+     * @param reportId report id
+     * @param emergencyType emergency type
+     * @param incidentNodeId incident node id
+     * @return calculated route
+     */
+    public Route runEmergencyWorkflow(String reportId, String emergencyType, String incidentNodeId) {
+        Report report = createReport(reportId, emergencyType, incidentNodeId);
+        Optional<Vehicle> selectedVehicle = dispatchCurrentReport();
+
+        if (selectedVehicle.isEmpty()) {
+            throw new IllegalStateException("No suitable available vehicle found for report " + report.getId() + ".");
+        }
+
+        return calculateCurrentRoute();
     }
 
     /**
@@ -343,6 +371,15 @@ public final class EmergencyRouterController {
         state.addLog("Vehicle " + vehicle.getId() + " moved to " + node.getId() + ".");
         state.notifyStateChanged();
         recalculateIfReady();
+    }
+
+    /**
+     * Marks every vehicle as available for another demo run.
+     */
+    public void resetFleetAvailability() {
+        state.getVehicles().forEach(vehicle -> vehicle.setStatus(VehicleStatus.AVAILABLE));
+        state.addLog("Fleet reset to AVAILABLE.");
+        state.notifyStateChanged();
     }
 
     private RouteStrategy createStrategy(RoutingAlgorithm algorithm) {

@@ -23,6 +23,8 @@ import junit.framework.TestCase;
  * <p>Main test methods in this file:</p>
  * <ul>
  *     <li>{@link #testCreateReportStoresReportInState()} checks report creation.</li>
+ *     <li>{@link #testRunEmergencyWorkflowCreatesDispatchesAndRoutes()} checks
+ *     the one-click UX workflow.</li>
  *     <li>{@link #testDispatchCurrentReportSelectsAmbulance()} checks dispatch.</li>
  *     <li>{@link #testChangeRoutingAlgorithmRecalculatesWhenReady()} checks
  *     Strategy Pattern switching.</li>
@@ -31,6 +33,7 @@ import junit.framework.TestCase;
  *     <li>{@link #testAddAndUpdateVehicle()} checks fleet editing.</li>
  *     <li>{@link #testDefaultScenarioContainsExpandedRoadNetwork()} checks the
  *     richer sample road map used by Swing.</li>
+ *     <li>{@link #testResetFleetAvailability()} checks repeated demo support.</li>
  * </ul>
  */
 public class EmergencyRouterControllerTest extends TestCase {
@@ -46,6 +49,21 @@ public class EmergencyRouterControllerTest extends TestCase {
 
         assertTrue(state.getCurrentReport().isPresent());
         assertEquals("R-CTRL-1", state.getCurrentReport().get().getId());
+    }
+
+    /**
+     * Verifies the one-click UX workflow creates, dispatches, and routes.
+     */
+    public void testRunEmergencyWorkflowCreatesDispatchesAndRoutes() {
+        ApplicationState state = SampleScenarioBuilder.buildDefaultState();
+        EmergencyRouterController controller = new EmergencyRouterController(state);
+
+        Route route = controller.runEmergencyWorkflow("R-UX-1", "MEDICAL", "Incident");
+
+        assertTrue(state.getCurrentReport().isPresent());
+        assertTrue(state.getSelectedVehicle().isPresent());
+        assertTrue(state.getCurrentRoute().isPresent());
+        assertEquals(3.0, route.getDistance(), 0.0001);
     }
 
     /**
@@ -112,6 +130,21 @@ public class EmergencyRouterControllerTest extends TestCase {
         assertEquals("AMB-2", vehicle.getId());
         assertEquals(VehicleStatus.OUT_OF_SERVICE, vehicle.getStatus());
         assertEquals("Bridge", vehicle.getCurrentLocation().toString());
+    }
+
+    /**
+     * Verifies the fleet can be reset for repeated demos.
+     */
+    public void testResetFleetAvailability() {
+        ApplicationState state = SampleScenarioBuilder.buildDefaultState();
+        EmergencyRouterController controller = new EmergencyRouterController(state);
+
+        controller.runEmergencyWorkflow("R-UX-2", "MEDICAL", "Incident");
+        assertEquals(VehicleStatus.BUSY, state.getSelectedVehicle().get().getStatus());
+
+        controller.resetFleetAvailability();
+
+        assertTrue(state.getVehicles().stream().allMatch(Vehicle::isAvailable));
     }
 
     /**
