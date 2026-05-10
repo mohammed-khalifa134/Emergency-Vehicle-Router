@@ -92,8 +92,8 @@ The Swing app starts from `com.emergencyrouter.main.SwingMain`.
 Swing screens include:
 
 - Dashboard summary
-- One-click quick emergency workflow
-- Reports workflow
+- Guided quick emergency workflow
+- Reports workflow with two clear steps
 - Vehicle management
 - Routing strategy selector
 - Traffic update controls
@@ -101,6 +101,15 @@ Swing screens include:
 - Form-based node and road editing
 - Simple Java2D road map
 - System logs
+
+New report workflow in the Swing UI:
+
+1. Enter the report ID and emergency type.
+2. Pick the vehicle that should respond.
+3. Press `1. Start Report`.
+4. Select the incident node.
+5. Press `2. Select Incident + Calculate`.
+6. The system creates the final report, marks the vehicle busy, calculates the route, redraws the map, and writes the action to the log.
 
 The map draws:
 
@@ -123,7 +132,7 @@ These are the main files touched by the Swing UI work and what each one impacts:
 
 - `EmergencyRouterController`
   - Impact: connects Swing buttons/forms to services without putting business logic inside the UI.
-  - Important methods: `createReport`, `runEmergencyWorkflow`, `dispatchCurrentReport`, `calculateCurrentRoute`, `changeRoutingAlgorithm`, `applyTrafficUpdate`, `addNode`, `removeNode`, `addOrUpdateRoad`, `updateRoad`, `removeRoad`, `addVehicle`, `updateVehicleStatus`, `updateVehicleLocation`, `resetFleetAvailability`.
+  - Important methods: `startReportWorkflow`, `completeReportWorkflow`, `createReport`, `runEmergencyWorkflow`, `dispatchCurrentReport`, `calculateCurrentRoute`, `changeRoutingAlgorithm`, `applyTrafficUpdate`, `addNode`, `removeNode`, `addOrUpdateRoad`, `updateRoad`, `removeRoad`, `addVehicle`, `updateVehicleStatus`, `updateVehicleLocation`, `resetFleetAvailability`.
 
 - `RoutingAlgorithm`
   - Impact: gives the Swing algorithm selector safe enum values instead of raw strings.
@@ -139,7 +148,7 @@ These are the main files touched by the Swing UI work and what each one impacts:
 
 - `EmergencyRouterPanel`
   - Impact: provides the visible dashboard tabs for reports, vehicles, routing, traffic, map editing, and logs.
-  - Important methods: `createTabs`, `createDashboardPanel`, `createReportsPanel`, `createVehiclesPanel`, `createRoutingPanel`, `createTrafficPanel`, `createMapEditorPanel`, `refreshAll`, `refreshTables`, `refreshComboBoxes`, `refreshSummary`, `runAction`.
+  - Important methods: `createTabs`, `createDashboardPanel`, `createReportsPanel`, `startWorkflowFromQuickPanel`, `completeWorkflowFromQuickPanel`, `startWorkflowFromReportsPanel`, `completeWorkflowFromReportsPanel`, `createVehiclesPanel`, `createRoutingPanel`, `createTrafficPanel`, `createMapEditorPanel`, `refreshAll`, `refreshTables`, `refreshComboBoxes`, `refreshSummary`, `runAction`.
 
 - `RoadMapPanel`
   - Impact: draws the graph, closed roads, and active route using Java2D.

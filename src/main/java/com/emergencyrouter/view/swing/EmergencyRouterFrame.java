@@ -1,5 +1,7 @@
 package com.emergencyrouter.view.swing;
 
+import java.awt.Dimension;
+
 import javax.swing.JFrame;
 
 import com.emergencyrouter.controller.EmergencyRouterController;
@@ -28,7 +30,8 @@ public final class EmergencyRouterFrame extends JFrame {
         super("Emergency Vehicle Router System");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setContentPane(new EmergencyRouterPanel(controller));
-        setSize(1180, 760);
+        setMinimumSize(new Dimension(1360, 860));
+        setSize(1500, 920);
         setLocationRelativeTo(null);
     }
 }

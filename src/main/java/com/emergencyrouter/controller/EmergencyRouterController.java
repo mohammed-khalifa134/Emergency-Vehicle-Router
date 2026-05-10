@@ -42,6 +42,10 @@ import com.emergencyrouter.strategy.ShortestDistanceStrategy;
  * <ul>
  *     <li>{@link #createReport(String, String, String)} creates the active
  *     emergency report.</li>
+ *     <li>{@link #startReportWorkflow(String, String, String)} starts the
+ *     guided report flow by storing report details and chosen vehicle.</li>
+ *     <li>{@link #completeReportWorkflow(String)} finishes the guided flow by
+ *     selecting the incident node and calculating the route.</li>
  *     <li>{@link #runEmergencyWorkflow(String, String, String)} performs the
  *     common create-dispatch-route workflow in one action.</li>
  *     <li>{@link #dispatchCurrentReport()} selects and marks a suitable vehicle
@@ -114,10 +118,80 @@ public final class EmergencyRouterController {
         );
 
         state.setCurrentReport(report);
+        state.clearPendingReport();
         state.clearSelectedVehicle();
         state.clearCurrentRoute();
         state.addLog("Emergency report " + report.getId() + " created for " + report.getType() + ".");
         return report;
+    }
+
+    /**
+     * Starts the guided report workflow.
+     *
+     * <p>Use this when the user first enters the report id/type and picks the
+     * specific vehicle that should respond. The incident node is intentionally
+     * selected later in {@link #completeReportWorkflow(String)}.</p>
+     *
+     * @param reportId report id
+     * @param emergencyType emergency type
+     * @param vehicleId selected vehicle id
+     */
+    public void startReportWorkflow(String reportId, String emergencyType, String vehicleId) {
+        Vehicle vehicle = requireVehicle(vehicleId);
+        String normalizedReportId = requireText(reportId, "reportId");
+        String normalizedEmergencyType = requireText(emergencyType, "emergencyType");
+
+        Report capabilityCheckReport = new Report(
+                normalizedReportId,
+                normalizedEmergencyType,
+                vehicle.getCurrentLocation(),
+                new Date()
+        );
+
+        if (!vehicle.isAvailable()) {
+            throw new IllegalStateException("Selected vehicle is not available: " + vehicle.getId());
+        }
+        if (!vehicle.canHandle(capabilityCheckReport)) {
+            throw new IllegalStateException(vehicle.getId() + " cannot handle " + normalizedEmergencyType + ".");
+        }
+
+        state.startPendingReport(normalizedReportId, normalizedEmergencyType);
+        state.setSelectedVehicle(vehicle);
+        state.addLog("Report " + normalizedReportId + " started with vehicle " + vehicle.getId() + ".");
+    }
+
+    /**
+     * Completes the guided report workflow and calculates the route.
+     *
+     * <p>Use this after Step 1 has stored the report details and selected
+     * vehicle. This method creates the actual {@link Report}, marks the vehicle
+     * busy through its response method, and calculates the route automatically.</p>
+     *
+     * @param incidentNodeId incident node id selected by the user
+     * @return calculated route
+     */
+    public Route completeReportWorkflow(String incidentNodeId) {
+        String reportId = state.getPendingReportId()
+                .orElseThrow(() -> new IllegalStateException("Start the report workflow first."));
+        String emergencyType = state.getPendingEmergencyType()
+                .orElseThrow(() -> new IllegalStateException("Start the report workflow first."));
+        Vehicle vehicle = state.getSelectedVehicle()
+                .orElseThrow(() -> new IllegalStateException("Pick a vehicle before selecting the incident node."));
+
+        if (!vehicle.isAvailable()) {
+            throw new IllegalStateException("Selected vehicle is not available: " + vehicle.getId());
+        }
+
+        Node incidentNode = requireNode(incidentNodeId);
+        Report report = new Report(reportId, emergencyType, incidentNode, new Date());
+
+        state.setCurrentReport(report);
+        state.clearPendingReport();
+        vehicle.respondToReport(report);
+        state.setSelectedVehicle(vehicle);
+        state.addLog("Incident node " + incidentNode.getId() + " selected for report " + report.getId() + ".");
+
+        return calculateCurrentRoute();
     }
 
     /**

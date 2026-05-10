@@ -26,8 +26,8 @@ import com.emergencyrouter.service.TrafficService;
  * <p>Impact on the system: this file makes the Swing UI stateful without
  * changing the existing console workflow. It centralizes the active graph,
  * vehicle fleet, current report, selected vehicle, current route, selected
- * strategy name, and visible log messages so every Swing panel refreshes from
- * one source of truth.</p>
+ * strategy name, pending report fields, and visible log messages so every
+ * Swing panel refreshes from one source of truth.</p>
  *
  * <p>Main methods in this file:</p>
  * <ul>
@@ -52,6 +52,8 @@ public final class ApplicationState {
     private final List<String> logs = new ArrayList<>();
     private final TrafficService trafficService;
     private RoutingService routingService;
+    private String pendingReportId;
+    private String pendingEmergencyType;
     private Report currentReport;
     private Vehicle selectedVehicle;
     private Route currentRoute;
@@ -103,6 +105,54 @@ public final class ApplicationState {
      */
     public void notifyStateChanged() {
         changes.firePropertyChange("state", null, this);
+    }
+
+    /**
+     * Starts a staged report before the incident location is known.
+     *
+     * <p>Use this for the guided Swing workflow: report id/type and vehicle are
+     * chosen first, then the incident node is selected in the next step.</p>
+     *
+     * @param reportId report id
+     * @param emergencyType emergency type
+     */
+    public void startPendingReport(String reportId, String emergencyType) {
+        pendingReportId = requireText(reportId, "reportId");
+        pendingEmergencyType = requireText(emergencyType, "emergencyType");
+        currentReport = null;
+        currentRoute = null;
+        notifyStateChanged();
+    }
+
+    /**
+     * Gets the staged report id.
+     *
+     * @return optional pending report id
+     */
+    public Optional<String> getPendingReportId() {
+        return Optional.ofNullable(pendingReportId);
+    }
+
+    /**
+     * Gets the staged emergency type.
+     *
+     * @return optional pending emergency type
+     */
+    public Optional<String> getPendingEmergencyType() {
+        return Optional.ofNullable(pendingEmergencyType);
+    }
+
+    /**
+     * Clears staged report fields after the final report is created.
+     */
+    public void clearPendingReport() {
+        if (pendingReportId == null && pendingEmergencyType == null) {
+            return;
+        }
+
+        pendingReportId = null;
+        pendingEmergencyType = null;
+        notifyStateChanged();
     }
 
     /**
@@ -165,6 +215,14 @@ public final class ApplicationState {
      */
     public void setCurrentReport(Report currentReport) {
         this.currentReport = Objects.requireNonNull(currentReport, "currentReport must not be null");
+        notifyStateChanged();
+    }
+
+    /**
+     * Clears the current report when a new staged report starts.
+     */
+    public void clearCurrentReport() {
+        currentReport = null;
         notifyStateChanged();
     }
 

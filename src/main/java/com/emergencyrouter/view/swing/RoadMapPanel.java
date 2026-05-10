@@ -60,7 +60,7 @@ public final class RoadMapPanel extends JPanel {
      * Creates the map panel with stable default size and background.
      */
     public RoadMapPanel() {
-        setPreferredSize(new Dimension(700, 420));
+        setPreferredSize(new Dimension(980, 620));
         setBackground(BACKGROUND);
     }
 

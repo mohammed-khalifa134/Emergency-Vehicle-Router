@@ -41,17 +41,18 @@ public final class SampleScenarioBuilder {
     public static ApplicationState buildDefaultState() {
         Graph graph = new Graph();
 
-        Node station = new Node("Station", 32.8872, 13.1913);
-        Node fireStation = new Node("FireStation", 32.8890, 13.1800);
-        Node policeStation = new Node("PoliceStation", 32.8920, 13.2000);
-        Node downtown = new Node("Downtown", 32.8950, 13.2050);
-        Node bridge = new Node("Bridge", 32.9020, 13.2150);
-        Node bypass = new Node("Bypass", 32.8920, 13.2300);
-        Node incident = new Node("Incident", 32.9100, 13.2350);
-        Node hospital = new Node("Hospital", 32.9060, 13.2000);
-        Node university = new Node("University", 32.9000, 13.1900);
-        Node airport = new Node("Airport", 32.8800, 13.2450);
-        Node harbor = new Node("Harbor", 32.9180, 13.2200);
+        // Wider visual coordinates keep the Swing map readable in the dashboard.
+        Node station = new Node("Station", 32.78, 13.08);
+        Node fireStation = new Node("FireStation", 33.02, 13.04);
+        Node policeStation = new Node("PoliceStation", 32.70, 13.28);
+        Node downtown = new Node("Downtown", 32.88, 13.32);
+        Node bridge = new Node("Bridge", 32.96, 13.52);
+        Node bypass = new Node("Bypass", 32.76, 13.58);
+        Node incident = new Node("Incident", 32.98, 13.78);
+        Node hospital = new Node("Hospital", 33.08, 13.34);
+        Node university = new Node("University", 32.90, 13.16);
+        Node airport = new Node("Airport", 32.62, 13.62);
+        Node harbor = new Node("Harbor", 33.12, 13.60);
 
         graph.addBidirectionalEdge(station, downtown, 1.0, 0.0);
         graph.addBidirectionalEdge(downtown, bridge, 1.0, 0.0);

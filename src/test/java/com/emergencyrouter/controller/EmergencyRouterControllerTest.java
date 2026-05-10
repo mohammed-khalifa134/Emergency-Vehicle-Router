@@ -25,6 +25,10 @@ import junit.framework.TestCase;
  *     <li>{@link #testCreateReportStoresReportInState()} checks report creation.</li>
  *     <li>{@link #testRunEmergencyWorkflowCreatesDispatchesAndRoutes()} checks
  *     the one-click UX workflow.</li>
+ *     <li>{@link #testGuidedReportWorkflowPicksVehicleThenIncident()} checks
+ *     the new report-first, incident-second Swing workflow.</li>
+ *     <li>{@link #testGuidedReportWorkflowRejectsWrongVehicleType()} checks
+ *     vehicle compatibility validation in the guided workflow.</li>
  *     <li>{@link #testDispatchCurrentReportSelectsAmbulance()} checks dispatch.</li>
  *     <li>{@link #testChangeRoutingAlgorithmRecalculatesWhenReady()} checks
  *     Strategy Pattern switching.</li>
@@ -64,6 +68,47 @@ public class EmergencyRouterControllerTest extends TestCase {
         assertTrue(state.getSelectedVehicle().isPresent());
         assertTrue(state.getCurrentRoute().isPresent());
         assertEquals(3.0, route.getDistance(), 0.0001);
+    }
+
+    /**
+     * Verifies the guided Swing workflow stores report details and vehicle
+     * before the incident node is selected, then calculates automatically.
+     */
+    public void testGuidedReportWorkflowPicksVehicleThenIncident() {
+        ApplicationState state = SampleScenarioBuilder.buildDefaultState();
+        EmergencyRouterController controller = new EmergencyRouterController(state);
+
+        controller.startReportWorkflow("R-GUIDED-1", "MEDICAL", "AMB-1");
+
+        assertEquals("R-GUIDED-1", state.getPendingReportId().get());
+        assertEquals("MEDICAL", state.getPendingEmergencyType().get());
+        assertTrue(state.getSelectedVehicle().isPresent());
+        assertTrue(state.getCurrentReport().isEmpty());
+        assertTrue(state.getCurrentRoute().isEmpty());
+
+        Route route = controller.completeReportWorkflow("Incident");
+
+        assertTrue(state.getPendingReportId().isEmpty());
+        assertTrue(state.getCurrentReport().isPresent());
+        assertTrue(state.getCurrentRoute().isPresent());
+        assertEquals(VehicleStatus.BUSY, state.getSelectedVehicle().get().getStatus());
+        assertEquals(3.0, route.getDistance(), 0.0001);
+    }
+
+    /**
+     * Verifies the guided workflow rejects a manually selected vehicle that
+     * cannot handle the selected emergency type.
+     */
+    public void testGuidedReportWorkflowRejectsWrongVehicleType() {
+        ApplicationState state = SampleScenarioBuilder.buildDefaultState();
+        EmergencyRouterController controller = new EmergencyRouterController(state);
+
+        try {
+            controller.startReportWorkflow("R-GUIDED-2", "MEDICAL", "FIRE-1");
+            fail("Expected the workflow to reject an incompatible vehicle.");
+        } catch (IllegalStateException exception) {
+            assertTrue(exception.getMessage().contains("cannot handle"));
+        }
     }
 
     /**
