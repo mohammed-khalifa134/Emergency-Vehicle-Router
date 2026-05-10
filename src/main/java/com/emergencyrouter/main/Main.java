@@ -139,6 +139,10 @@ public final class Main {
         Node bridge = new Node("Bridge", 32.9020, 13.2150);
         Node bypass = new Node("Bypass", 32.8920, 13.2300);
         Node incident = new Node("Incident", 32.9100, 13.2350);
+        Node hospital = new Node("Hospital", 32.9060, 13.2000);
+        Node university = new Node("University", 32.9000, 13.1900);
+        Node airport = new Node("Airport", 32.8800, 13.2450);
+        Node harbor = new Node("Harbor", 32.9180, 13.2200);
 
         graph.addBidirectionalEdge(station, downtown, 1.0, 0.0);
         graph.addBidirectionalEdge(downtown, bridge, 1.0, 0.0);
@@ -147,6 +151,19 @@ public final class Main {
         graph.addBidirectionalEdge(bypass, incident, 2.0, 0.0);
         graph.addBidirectionalEdge(fireStation, downtown, 1.2, 0.2);
         graph.addBidirectionalEdge(policeStation, downtown, 1.4, 0.1);
+
+        // Extra demo roads create more alternative routes for the console and Swing demos.
+        graph.addBidirectionalEdge(station, university, 3.2, 0.3);
+        graph.addBidirectionalEdge(university, downtown, 2.1, 0.2);
+        graph.addBidirectionalEdge(university, hospital, 2.2, 0.4);
+        graph.addBidirectionalEdge(downtown, hospital, 2.2, 0.3);
+        graph.addBidirectionalEdge(hospital, bridge, 1.8, 0.2);
+        graph.addBidirectionalEdge(hospital, harbor, 1.8, 0.3);
+        graph.addBidirectionalEdge(bridge, harbor, 2.0, 0.2);
+        graph.addBidirectionalEdge(harbor, incident, 2.6, 0.4);
+        graph.addBidirectionalEdge(policeStation, airport, 2.4, 0.5);
+        graph.addBidirectionalEdge(airport, bypass, 2.6, 0.2);
+        graph.addBidirectionalEdge(airport, incident, 4.0, 0.6);
 
         return new SampleRoadNetwork(graph, station, fireStation, policeStation, incident);
     }

@@ -19,6 +19,7 @@ The project is built for learning clean architecture, SOLID principles, and thre
 - Runs Hub Label routing for faster preprocessed queries.
 - Updates road traffic and closures in real time.
 - Recalculates the active route automatically after traffic changes.
+- Provides a Swing desktop dashboard with reports, vehicles, routing, traffic, map, and logs.
 
 ## Requirements
 
@@ -35,6 +36,8 @@ src/
 |   `-- java/
 |       `-- com/
 |           `-- emergencyrouter/
+|               |-- app/
+|               |-- controller/
 |               |-- enums/
 |               |-- factory/
 |               |-- interfaces/
@@ -43,7 +46,9 @@ src/
 |               |   `-- vehicles/
 |               |-- observer/
 |               |-- service/
-|               `-- strategy/
+|               |-- strategy/
+|               `-- view/
+|                   `-- swing/
 `-- test/
     `-- java/
         `-- com/
@@ -52,7 +57,9 @@ src/
 
 ## Package Responsibilities
 
-- `enums`: shared enums such as `VehicleStatus`.
+- `app`: in-memory Swing application state and reusable sample scenario setup.
+- `controller`: UI-facing controller that coordinates services without putting business logic in views.
+- `enums`: shared enums such as `VehicleStatus` and `RoutingAlgorithm`.
 - `interfaces`: small contracts such as `Location`.
 - `model`: core domain objects such as reports, routes, graph nodes, edges, traffic data, and hub labels.
 - `model.vehicles`: vehicle hierarchy: `Vehicle`, `Ambulance`, `FireTruck`, and `PoliceCar`.
@@ -61,6 +68,7 @@ src/
 - `strategy`: route calculation strategies.
 - `observer`: observer contracts used for traffic notifications.
 - `main`: console simulation entry point.
+- `view.swing`: Swing dashboard, map panel, and desktop frame.
 
 ## Main Workflow
 
@@ -77,6 +85,80 @@ The console demo in `com.emergencyrouter.main.Main` shows the full system:
 9. Notify observers.
 10. Recalculate the active route automatically.
 
+## Swing Desktop UI
+
+The Swing app starts from `com.emergencyrouter.main.SwingMain`.
+
+Swing screens include:
+
+- Dashboard summary
+- Reports workflow
+- Vehicle management
+- Routing strategy selector
+- Traffic update controls
+- Form-based node and road editing
+- Simple Java2D road map
+- System logs
+
+The map draws:
+
+- graph nodes as labeled points
+- open roads as normal lines
+- closed roads as red dashed lines
+- current route as a highlighted line
+
+## Swing Implementation File Guide
+
+These are the main files touched by the Swing UI work and what each one impacts:
+
+- `ApplicationState`
+  - Impact: stores the in-memory GUI state shared by all Swing panels.
+  - Important methods: `addChangeListener`, `notifyStateChanged`, `addVehicle`, `findVehicle`, `setCurrentReport`, `setSelectedVehicle`, `setCurrentRoute`, `clearCurrentRoute`, `addLog`.
+
+- `SampleScenarioBuilder`
+  - Impact: builds the sample graph, vehicles, routing service, and traffic observer setup used when the Swing app starts.
+  - Important method: `buildDefaultState`.
+
+- `EmergencyRouterController`
+  - Impact: connects Swing buttons/forms to services without putting business logic inside the UI.
+  - Important methods: `createReport`, `dispatchCurrentReport`, `calculateCurrentRoute`, `changeRoutingAlgorithm`, `applyTrafficUpdate`, `addNode`, `removeNode`, `addOrUpdateRoad`, `updateRoad`, `removeRoad`, `addVehicle`, `updateVehicleStatus`, `updateVehicleLocation`.
+
+- `RoutingAlgorithm`
+  - Impact: gives the Swing algorithm selector safe enum values instead of raw strings.
+  - Important methods: `getDisplayName`, `toString`.
+
+- `SwingMain`
+  - Impact: starts the Swing desktop app while keeping the console `Main` available.
+  - Important methods: `main`, `setSystemLookAndFeel`.
+
+- `EmergencyRouterFrame`
+  - Impact: creates the top-level desktop window and installs the main dashboard panel.
+  - Important method: `EmergencyRouterFrame`.
+
+- `EmergencyRouterPanel`
+  - Impact: provides the visible dashboard tabs for reports, vehicles, routing, traffic, map editing, and logs.
+  - Important methods: `createTabs`, `createReportsPanel`, `createVehiclesPanel`, `createRoutingPanel`, `createTrafficPanel`, `createMapEditorPanel`, `refreshAll`, `refreshTables`, `refreshComboBoxes`, `refreshSummary`, `runAction`.
+
+- `RoadMapPanel`
+  - Impact: draws the graph, closed roads, and active route using Java2D.
+  - Important methods: `setGraph`, `setRoute`, `paintComponent`, `drawRoads`, `drawRoute`, `drawNodes`, `toPoint`.
+
+- `Graph`
+  - Impact: supports Swing graph editing while still serving Dijkstra, Hub Labels, and traffic updates.
+  - Important methods added for the GUI: `getEdges`, `addOrReplaceDirectedEdge`, `updateOrReplaceRoad`, `removeEdge`, `removeNode`.
+
+- `GraphTest`
+  - Impact: verifies existing graph behavior and new graph editing behavior.
+  - Important tests: edge listing, road replacement, road removal, and node removal with connected roads.
+
+- `EmergencyRouterControllerTest`
+  - Impact: verifies the GUI controller workflow without opening a Swing window.
+  - Important tests: report creation, dispatch, algorithm switching, traffic rerouting, and vehicle editing.
+
+- `SwingPanelConstructionTest`
+  - Impact: verifies Swing panels can be constructed and the map can paint off-screen.
+  - Important tests: dashboard construction and map rendering.
+
 ## Running With Maven
 
 If Maven is installed and available on your PATH:
@@ -84,6 +166,7 @@ If Maven is installed and available on your PATH:
 ```powershell
 mvn test
 mvn exec:java -Dexec.mainClass="com.emergencyrouter.main.Main"
+mvn exec:java -Dexec.mainClass="com.emergencyrouter.main.SwingMain"
 ```
 
 This `pom.xml` currently configures Java 21 compilation and JUnit 4 tests. If the `exec:java` command is not available in your Maven setup, use the direct `javac` commands below.
@@ -96,6 +179,7 @@ From the project root:
 $files = Get-ChildItem -Path src\main\java -Recurse -Filter *.java | ForEach-Object { $_.FullName }
 javac --release 21 -d target\classes $files
 java -cp target\classes com.emergencyrouter.main.Main
+java -cp target\classes com.emergencyrouter.main.SwingMain
 ```
 
 ## Running Tests Without Maven
@@ -248,3 +332,5 @@ The project includes focused tests for:
 - Hub Label preprocessing and routing
 - observer notification
 - traffic-triggered route recalculation
+- Swing controller workflow
+- Swing panel and map construction
