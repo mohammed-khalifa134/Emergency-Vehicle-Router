@@ -1,3 +1,9 @@
+
 target/
 *.class
 .vscode/
+
+target/*
+target/classes/*
+ origin/T-N
+.DS_Store
