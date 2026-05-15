@@ -26,26 +26,12 @@ public record Coordinate(double latitude, double longitude) implements Location 
         }
     }
 
-    /**
-     * Returns the latitude coordinate.
-     *
-     * <p>Use this method when a routing algorithm calculates distance between
-     * two points.</p>
-     *
-     * @return latitude value
-     */
+   
     @Override
     public double getLatitude() {
         return latitude;
     }
 
-    /**
-     * Returns the longitude coordinate.
-     *
-     * <p>Use this method together with latitude for route distance estimation.</p>
-     *
-     * @return longitude value
-     */
     @Override
     public double getLongitude() {
         return longitude;

@@ -1,93 +1,160 @@
 package com.emergencyrouter.service;
 
+import com.emergencyrouter.enums.ReportStatus;
+import com.emergencyrouter.enums.VehicleStatus;
+import com.emergencyrouter.model.DispatchResult;
 import com.emergencyrouter.model.Report;
+import com.emergencyrouter.model.Route;
+import com.emergencyrouter.model.VehicleRouteCandidate;
+import com.emergencyrouter.model.vehicles.Helicopter;
+import com.emergencyrouter.model.vehicles.Drone;
 import com.emergencyrouter.model.vehicles.Vehicle;
+import com.emergencyrouter.strategy.RouteStrategy;
+import com.emergencyrouter.strategy.ShortestDistanceStrategy;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * Coordinates emergency vehicle selection for incoming reports.
- *
- * <p>Use this service when an emergency report arrives and the system needs to
- * find an available vehicle that matches the emergency type.</p>
- *
- * <p>Single Responsibility Principle: this service selects and assigns
- * vehicles; routing calculations stay in routing services and strategies.</p>
- */
 public final class DispatchService {
+
     private final List<Vehicle> vehicles;
 
-    /**
-     * Creates a dispatch service with a fleet of vehicles.
-     *
-     * <p>Use this constructor during setup after vehicles have been created by
-     * {@code VehicleFactory}.</p>
-     *
-     * @param vehicles available fleet list
-     */
-    public DispatchService(List<Vehicle> vehicles) {
-        this.vehicles = List.copyOf(Objects.requireNonNull(vehicles, "vehicles must not be null"));
+    private final RoutingService routingService;
+
+    private final RouteStrategy airStrategy;
+
+    public DispatchService(
+            List<Vehicle> vehicles,
+            RoutingService routingService
+    ) {
+
+        this.vehicles = List.copyOf(
+                Objects.requireNonNull(vehicles)
+        );
+
+        this.routingService =
+                Objects.requireNonNull(routingService);
+
+        /*
+         * الطائرات والدرون لا تحتاج طرق شوارع
+         */
+        this.airStrategy =
+                new ShortestDistanceStrategy();
     }
 
-    /**
-     * Assigns a suitable vehicle to a report when one is available.
-     *
-     * <p>Use this method for the high-level dispatch workflow. It prints a clear
-     * message, calls the selected vehicle's polymorphic response method, and
-     * handles the no-vehicle case without crashing the program.</p>
-     *
-     * @param report emergency report to assign
-     */
-    public void assignVehicle(Report report) {
-        Objects.requireNonNull(report, "report must not be null");
+    public DispatchResult dispatch(
+            Report report
+    ) {
 
-        Optional<Vehicle> selectedVehicle = selectVehicle(report);
+        Objects.requireNonNull(report);
 
-        if (selectedVehicle.isEmpty()) {
-            System.out.println("No suitable available vehicle found for report " + report.getId() + ".");
-            return;
+        Optional<VehicleRouteCandidate> candidate =
+                selectBestVehicle(report);
+
+        if (candidate.isEmpty()) {
+
+            return new DispatchResult(
+                    false,
+                    null,
+                    report,
+                    null,
+                    "No available vehicle found"
+            );
         }
 
-        Vehicle vehicle = selectedVehicle.get();
-        System.out.println("Available " + vehicle.getClass().getSimpleName() + " selected.");
+        VehicleRouteCandidate best =
+                candidate.get();
+
+        Vehicle vehicle =
+                best.vehicle();
+
+        Route route =
+                best.route();
+
+        vehicle.setStatus(
+                VehicleStatus.BUSY
+        );
+
+        report.setStatus(
+                ReportStatus.DISPATCHED
+        );
+
         vehicle.respondToReport(report);
+
+        return new DispatchResult(
+                true,
+                vehicle,
+                report,
+                route,
+                "Vehicle dispatched successfully"
+        );
     }
 
-    /**
-     * Finds the first available vehicle suitable for the report.
-     *
-     * <p>Use this method in tests or services that need to inspect the selected
-     * vehicle before assigning it.</p>
-     *
-     * @param report emergency report to evaluate
-     * @return selected vehicle, or empty when none is suitable
-     */
-    public Optional<Vehicle> selectVehicle(Report report) {
-        Objects.requireNonNull(report, "report must not be null");
+    public Optional<VehicleRouteCandidate>
+    selectBestVehicle(
+            Report report
+    ) {
+
+        Objects.requireNonNull(report);
 
         return vehicles.stream()
+
                 .filter(Vehicle::isAvailable)
-                .filter(vehicle -> isSuitable(vehicle, report))
-                .findFirst();
+
+                .filter(vehicle ->
+                        vehicle.canHandle(report)
+                )
+
+                .map(vehicle -> {
+
+                    Route route =
+                            calculateVehicleRoute(
+                                    vehicle,
+                                    report
+                            );
+
+                    return new VehicleRouteCandidate(
+                            vehicle,
+                            route
+                    );
+                })
+
+                /*
+                 * اختر أسرع مركبة
+                 */
+                .min(
+                        Comparator.comparingDouble(
+                                candidate ->
+                                        candidate.route().getTime()
+                        )
+                );
     }
 
-    /**
-     * Checks whether a vehicle can handle an emergency report.
-     *
-     * <p>Use this method to keep the selection loop readable. The actual
-     * capability decision belongs to each {@link Vehicle}, so dispatch does not
-     * need to know every concrete vehicle class.</p>
-     *
-     * @param vehicle vehicle being considered
-     * @param report emergency report being handled
-     * @return true when the vehicle can handle the report type
-     */
-    public boolean isSuitable(Vehicle vehicle, Report report) {
-        Objects.requireNonNull(vehicle, "vehicle must not be null");
-        Objects.requireNonNull(report, "report must not be null");
+    private Route calculateVehicleRoute(
+            Vehicle vehicle,
+            Report report
+    ) {
 
-        return vehicle.canHandle(report);
+        /*
+         * الطائرات والدرون
+         */
+        if (vehicle instanceof Helicopter
+                || vehicle instanceof Drone) {
+
+            return airStrategy.calculateRoute(
+                    vehicle.getCurrentLocation(),
+                    report.getLocation()
+            );
+        }
+
+        /*
+         * المركبات الأرضية
+         */
+        return routingService.calculateRoute(
+                vehicle.getCurrentLocation(),
+                report.getLocation()
+        );
     }
 }

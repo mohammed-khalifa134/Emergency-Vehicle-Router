@@ -1,86 +1,189 @@
 package com.emergencyrouter.model;
 
+import com.emergencyrouter.enums.EmergencyType;
+import com.emergencyrouter.enums.ReportStatus;
 import com.emergencyrouter.interfaces.Location;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
-/**
- * Represents an emergency report received by the system.
- *
- * <p>Use this class to carry the emergency type, incident location, and time
- * into dispatch and routing services.</p>
- */
 public final class Report {
-    private final String id;
-    private final String type;
-    private final Location location;
-    private final Date timestamp;
 
-    /**
-     * Creates an emergency report.
-     *
-     * @param id unique report identifier
-     * @param type emergency type, such as MEDICAL, FIRE, or POLICE
-     * @param location incident location
-     * @param timestamp time the report was created
-     */
-    public Report(String id, String type, Location location, Date timestamp) {
-        this.id = requireText(id, "id");
-        this.type = requireText(type, "type");
-        this.location = Objects.requireNonNull(location, "location must not be null");
-        this.timestamp = new Date(Objects.requireNonNull(timestamp, "timestamp must not be null").getTime());
+    private final String id;
+
+    private final EmergencyType type;
+
+    private final Location location;
+
+    private final LocalDateTime timestamp;
+
+    private ReportStatus status;
+
+    private int severityLevel;
+
+    private Report(Builder builder) {
+
+        this.id = requireText(
+                builder.id,
+                "id"
+        );
+
+        this.type = Objects.requireNonNull(
+                builder.type,
+                "type must not be null"
+        );
+
+        this.location = Objects.requireNonNull(
+                builder.location,
+                "location must not be null"
+        );
+
+        this.timestamp = Objects.requireNonNull(
+                builder.timestamp,
+                "timestamp must not be null"
+        );
+
+        validateSeverity(builder.severityLevel);
+
+        this.severityLevel = builder.severityLevel;
+
+        this.status = Objects.requireNonNullElse(
+                builder.status,
+                ReportStatus.RECEIVED
+        );
     }
 
-    /**
-     * Gets the report identifier.
-     *
-     * <p>Use this method in logs or console output to show which incident is
-     * being handled.</p>
-     *
-     * @return report id
-     */
+    public static Builder builder() {
+
+        return new Builder();
+    }
+
     public String getId() {
+
         return id;
     }
 
-    /**
-     * Gets the emergency type.
-     *
-     * <p>Use this method when selecting a suitable vehicle for the report.</p>
-     *
-     * @return report type
-     */
-    public String getType() {
+    public EmergencyType getType() {
+
         return type;
     }
 
-    /**
-     * Gets the emergency location.
-     *
-     * <p>Use this method as the route destination during dispatch.</p>
-     *
-     * @return incident location
-     */
     public Location getLocation() {
+
         return location;
     }
 
-    /**
-     * Gets the report timestamp.
-     *
-     * <p>Use this method when displaying when the emergency request arrived.</p>
-     *
-     * @return defensive copy of report timestamp
-     */
-    public Date getTimestamp() {
-        return new Date(timestamp.getTime());
+    public LocalDateTime getTimestamp() {
+
+        return timestamp;
     }
 
-    private static String requireText(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(fieldName + " must not be blank");
+    public ReportStatus getStatus() {
+
+        return status;
+    }
+
+    public int getSeverityLevel() {
+
+        return severityLevel;
+    }
+
+    public void setStatus(ReportStatus status) {
+
+        this.status = Objects.requireNonNull(
+                status,
+                "status must not be null"
+        );
+    }
+
+    private void validateSeverity(int level) {
+
+        if (level < 1 || level > 5) {
+
+            throw new IllegalArgumentException(
+                    "Severity must be between 1 and 5"
+            );
         }
+    }
+
+    private static String requireText(
+            String value,
+            String fieldName
+    ) {
+
+        if (value == null || value.isBlank()) {
+
+            throw new IllegalArgumentException(
+                    fieldName + " must not be blank"
+            );
+        }
+
         return value;
+    }
+
+    public static final class Builder {
+
+        private String id =
+                UUID.randomUUID().toString();
+
+        private EmergencyType type;
+
+        private Location location;
+
+        private LocalDateTime timestamp =
+                LocalDateTime.now();
+
+        private ReportStatus status =
+                ReportStatus.RECEIVED;
+
+        private int severityLevel = 1;
+
+        public Builder id(String id) {
+
+            this.id = id;
+
+            return this;
+        }
+
+        public Builder type(EmergencyType type) {
+
+            this.type = type;
+
+            return this;
+        }
+
+        public Builder location(Location location) {
+
+            this.location = location;
+
+            return this;
+        }
+
+        public Builder timestamp(LocalDateTime timestamp) {
+
+            this.timestamp = timestamp;
+
+            return this;
+        }
+
+        public Builder status(ReportStatus status) {
+
+            this.status = status;
+
+            return this;
+        }
+
+        public Builder severityLevel(int severityLevel) {
+
+            this.severityLevel = severityLevel;
+
+            return this;
+        }
+
+        public Report build() {
+
+            return new Report(this);
+        }
     }
 }

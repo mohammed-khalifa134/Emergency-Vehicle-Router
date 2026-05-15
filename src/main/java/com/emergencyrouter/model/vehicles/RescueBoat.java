@@ -6,9 +6,9 @@ import com.emergencyrouter.model.Report;
 
 import java.util.Objects;
 
-public final class FireTruck extends Vehicle {
+public final class RescueBoat extends Vehicle {
 
-    public FireTruck(
+    public RescueBoat(
             String id,
             Location currentLocation
     ) {
@@ -16,7 +16,7 @@ public final class FireTruck extends Vehicle {
         super(id, currentLocation);
     }
 
-    public void provideFirefighters() {
+    public void waterRescue() {
 
     }
 
@@ -25,7 +25,7 @@ public final class FireTruck extends Vehicle {
 
         return reportTypeMatches(
                 report,
-                EmergencyType.FIRE
+                EmergencyType.ACCIDENT
         );
     }
 
@@ -34,7 +34,7 @@ public final class FireTruck extends Vehicle {
 
         Objects.requireNonNull(report);
 
-        provideFirefighters();
+        waterRescue();
 
         markBusy();
     }
